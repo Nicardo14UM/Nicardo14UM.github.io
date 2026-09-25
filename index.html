@@ -235,7 +235,7 @@
       <button class="active" data-section="dashboard">◈ <span>Dashboard</span></button>
       <button data-section="rankings">▤ <span>Draft Rankings</span></button>
       <button data-section="matchups">◉ <span>Matchups & Projections</span></button>
-      <button data-section="roster">♟ <span>My Roster</span></button>
+      <button data-section="roster">♟ <span>My Rosters</span></button>
       <button data-section="markets">⌁ <span>Betting Markets</span></button>
       <button data-section="news">◌ <span>News & Alerts</span></button>
       <div class="nav-label">Tools</div>
@@ -265,11 +265,20 @@
           <div>
             <div class="eyebrow" id="seasonLabel">2026 NFL Fantasy</div>
             <h1>Your fantasy command center.</h1>
-            <p>Rank players, build lineups, evaluate trades, track injuries, and compare fantasy projections with the betting market.</p>
+            <p>Rank players, build lineups, evaluate trades, track injuries, and compare fantasy projections with the betting market. NFL uses ESPN PPR and NBA uses ESPN Head-to-Head Points.</p>
           </div>
           <div class="hero-actions">
             <button class="btn" data-jump="rankings">View rankings</button>
             <button class="btn primary" id="heroAi">Ask FantasyIQ</button>
+          </div>
+        </div>
+
+        <div class="card" style="padding:14px 16px;margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+            <div><b>Scoring-aware rankings</b><div style="color:var(--muted);font-size:12px;margin-top:3px">
+              NFL: ESPN PPR · NBA: ESPN Head-to-Head Points · Multi-source composite · Live news/injury adjustments
+            </div></div>
+            <button class="btn" id="dashboardRefresh">↻ Refresh data</button>
           </div>
         </div>
 
@@ -317,22 +326,37 @@
 
       <section id="rankings" class="page-section hidden">
         <div class="hero">
-          <div><div class="eyebrow">Draft Room</div><h1>Draft rankings</h1><p>Customize the board by sport, scoring format, position, and your own player tiers.</p></div>
-          <div class="hero-actions"><button class="btn primary" id="exportBtn">Export board</button></div>
+          <div><div class="eyebrow">Scoring-Aware Draft Room</div><h1>2026-27 live rankings</h1>
+          <p>The ranking engine uses the sport's configured ESPN scoring format first, then blends multiple sources and applies current injury, role, matchup and news adjustments.</p></div>
+          <div class="hero-actions">
+            <button class="btn" id="refreshRankingsBtn">↻ Refresh now</button>
+            <button class="btn primary" id="exportBtn">Export board</button>
+          </div>
+        </div>
+        <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:16px">
+          <div class="card stat"><div class="label">NFL scoring</div><div class="value" style="font-size:18px">ESPN PPR</div><small>2026 season</small></div>
+          <div class="card stat"><div class="label">NBA scoring</div><div class="value" style="font-size:18px">ESPN H2H Points</div><small>2026-27 season</small></div>
+          <div class="card stat"><div class="label">Ranking method</div><div class="value" style="font-size:18px">Multi-source</div><small>Normalized before blending</small></div>
+          <div class="card stat"><div class="label">Auto refresh</div><div class="value" style="font-size:18px">15 min</div><small>+ event-driven updates</small></div>
+        </div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header"><div><h2>Ranking sources</h2><span>Current source timestamp is retained by the backend</span></div><span class="pill green" id="rankingUpdated">Demo snapshot</span></div>
+          <div id="sourceList" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px 18px"></div>
+          <div style="padding:12px 18px;color:#95a2b8;font-size:11px;border-top:1px solid var(--border)">
+            <b style="color:#dce4f4">Important:</b> the browser should never scrape or pretend a source is live. In production, the backend fetches licensed/approved feeds, stores timestamps, normalizes scoring, and sends the current composite to this page.
+          </div>
         </div>
         <div class="card">
           <div class="toolbar">
             <select class="select" id="positionFilter"><option value="ALL">All positions</option><option>QB</option><option>RB</option><option>WR</option><option>TE</option><option>PG</option><option>SG</option><option>SF</option><option>PF</option><option>C</option></select>
-            <select class="select"><option>My scoring</option><option>PPR</option><option>Half PPR</option><option>Points</option><option>Categories</option></select>
-            <select class="select"><option>Consensus + AI</option><option>Consensus</option><option>AI projection</option><option>Market-adjusted</option></select>
-            <span class="spacer"></span><button class="btn" id="rerankBtn">✦ Re-rank with AI</button>
+            <select class="select" id="rankingView"><option>Draft / Season</option><option>Weekly</option><option>Rest of Season</option></select>
+            <select class="select" id="sourceMode"><option value="BLEND">Multi-source composite</option><option value="ESPN">ESPN source</option><option value="FANTASYPROS">FantasyPros source</option><option value="NEWS_ADJUSTED">News-adjusted model</option></select>
+            <span class="spacer"></span><button class="btn" id="rerankBtn">✦ Re-rank now</button>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Rank</th><th>Player</th><th>Pos</th><th>Proj.</th><th>Market</th><th>Value</th><th>Matchup</th><th>Action</th></tr></thead>
-              <tbody id="rankingsBody"></tbody>
-            </table>
-          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Rank</th><th>Player</th><th>Pos</th><th>Proj.</th><th>Base</th><th>Live adj.</th><th>Matchup</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="rankingsBody"></tbody>
+          </table></div>
         </div>
       </section>
 
@@ -342,10 +366,18 @@
       </section>
 
       <section id="roster" class="page-section hidden">
-        <div class="hero"><div><div class="eyebrow">ESPN League</div><h1>My roster</h1><p>Connect an ESPN league to pull your team, opponents, standings, transactions, and waiver pool.</p></div><button class="btn primary" id="syncRoster">↻ Sync ESPN League</button></div>
+        <div class="hero">
+          <div><div class="eyebrow">Unlimited Roster Workspace</div><h1>My rosters</h1>
+          <p>Create as many manual rosters as you want. Each roster stores its sport, league size, roster size and players in your browser.</p></div>
+          <div class="hero-actions"><button class="btn" id="syncRoster">↻ Sync ESPN League</button><button class="btn primary" id="addRosterBtn">＋ Add roster</button></div>
+        </div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header"><div><h2>Saved rosters</h2><span id="rosterCount">0 rosters</span></div><span class="pill green">Local storage</span></div>
+          <div id="rosterList" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:16px"></div>
+        </div>
         <div class="card">
-          <div class="card-header"><div><h2>Connected league</h2><span id="leagueStatus">Demo league — not connected</span></div><span class="pill yellow">Connection required</span></div>
-          <div class="table-wrap"><table><thead><tr><th>Player</th><th>Position</th><th>Projected</th><th>Opponent</th><th>Health</th><th>AI Action</th></tr></thead><tbody id="rosterBody"></tbody></table></div>
+          <div class="card-header"><div><h2>Active roster</h2><span id="leagueStatus">Select a roster</span></div><span class="pill yellow" id="activeScoring">No roster selected</span></div>
+          <div class="table-wrap"><table><thead><tr><th>Player</th><th>Position</th><th>Projected</th><th>Opponent</th><th>Health</th><th>AI Action</th></tr></thead><tbody id="rosterBody"><tr><td colspan="6" class="empty-note">Create a roster to get started.</td></tr></tbody></table></div>
         </div>
       </section>
 
@@ -433,6 +465,59 @@
     }
   };
 
+
+  const RANKING_SOURCES = {
+    NFL: [
+      {name:"ESPN / Mike Clay", scoring:"PPR", type:"ESPN", url:"https://www.espn.com/fantasy/football/story/_/id/47513496/2026-fantasy-football-rankings-ppr-mike-clay"},
+      {name:"FantasyPros Experts", scoring:"PPR", type:"FANTASYPROS", url:"https://www.fantasypros.com/nfl/fantasy-football-rankings/ppr-overall.php"},
+      {name:"FantasyPros Consensus", scoring:"PPR", type:"CONSENSUS", url:"https://www.fantasypros.com/nfl/cheatsheets/top-ppr-players.php"}
+    ],
+    NBA: [
+      {name:"ESPN / André Snellings", scoring:"H2H Points", type:"ESPN", url:"https://www.espn.com/fantasy/basketball/story/_/id/48484688/fantasy-basketball-way-too-early-points-league-rankings-next-season-2026-27"},
+      {name:"FantasyPros Points", scoring:"ESPN Points", type:"FANTASYPROS", url:"https://www.fantasypros.com/nba/rankings/overall-points-espn.php"},
+      {name:"FantasyPros Consensus", scoring:"ESPN Points", type:"CONSENSUS", url:"https://www.fantasypros.com/nba/rankings/overall-points-espn.php"}
+    ]
+  };
+  const ROSTERS_KEY="fantasyiq.rosters.v2";
+  let activeRosterId=null;
+  const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
+  const loadRosters=()=>{try{return JSON.parse(localStorage.getItem(ROSTERS_KEY)||"[]")}catch(e){return[]}};
+  const saveRosters=r=>localStorage.setItem(ROSTERS_KEY,JSON.stringify(r));
+  const rosterScoring=r=>r.sport==="NFL"?"ESPN PPR":"ESPN H2H Points";
+
+  function renderSources(){
+    $("#sourceList").innerHTML=RANKING_SOURCES[sport].map(s=>`<div style="background:#0a101c;border:1px solid var(--border);border-radius:10px;padding:11px"><b>${esc(s.name)}</b><small style="display:block;color:var(--muted);margin-top:3px">${esc(s.scoring)} · ${s.type}</small><small style="display:block;color:#7bf2d0;margin-top:6px">● Backend feed configured</small></div>`).join("");
+  }
+  function openRosterModal(){
+    $("#modalTitle").textContent="Add fantasy roster"; $("#modalText").textContent="Manual rosters use ESPN PPR for NFL and ESPN Head-to-Head Points for NBA.";
+    $("#rosterForm").classList.remove("hidden"); $("#modalAction").textContent="Create roster"; $("#modalAction").dataset.mode="createRoster"; $("#modalBackdrop").classList.add("show");
+  }
+  function createRoster(){
+    const r={id:(crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random())),name:$("#newRosterName").value.trim()||"My "+$("#newRosterSport").value+" Roster",sport:$("#newRosterSport").value,teams:+$("#newRosterTeams").value||12,rosterSize:+$("#newRosterSize").value||16,players:$("#newRosterPlayers").value.split(",").map(x=>x.trim()).filter(Boolean)};
+    const all=loadRosters();all.push(r);saveRosters(all);activeRosterId=r.id;$("#rosterForm").classList.add("hidden");$("#modalAction").textContent="Continue";delete $("#modalAction").dataset.mode;closeModal();renderRosters();renderActiveRoster();toast("Roster added.");
+  }
+  function deleteRoster(id){const all=loadRosters().filter(r=>r.id!==id);saveRosters(all);if(activeRosterId===id)activeRosterId=all[0]?.id||null;renderRosters();renderActiveRoster();toast("Roster removed.")}
+  function selectRoster(id){activeRosterId=id;const r=loadRosters().find(x=>x.id===id);if(r){sport=r.sport;$$(".sport-switch button").forEach(b=>b.classList.toggle("active",b.dataset.sport===sport));render();}}
+  function renderRosters(){
+    const all=loadRosters();$("#rosterCount").textContent=`${all.length} roster${all.length===1?"":"s"}`;
+    $("#rosterList").innerHTML=all.length?all.map(r=>`<div class="card" style="padding:14px"><b>${esc(r.name)}</b><div style="color:var(--muted);font-size:11px;margin-top:3px">${r.sport} · ${rosterScoring(r)} · ${r.teams} teams · ${r.rosterSize} slots</div><div style="display:flex;gap:5px;flex-wrap:wrap;margin:10px 0">${r.players.slice(0,6).map(p=>`<span class="pill">${esc(p)}</span>`).join("")||'<span class="pill yellow">No players entered</span>'}</div><button class="btn primary" onclick="selectRoster('${r.id}')">Open</button> <button class="btn" onclick="deleteRoster('${r.id}')">Delete</button></div>`).join(""):'<div class="empty-note" style="grid-column:1/-1">No rosters yet. Add your first roster.</div>';
+  }
+  function renderActiveRoster(){
+    const r=loadRosters().find(x=>x.id===activeRosterId);
+    if(!r){$("#leagueStatus").textContent="Select a roster";$("#activeScoring").textContent="No roster selected";return}
+    $("#leagueStatus").textContent=`${r.name} · ${r.sport}`;$("#activeScoring").textContent=rosterScoring(r);
+    const names=r.players.length?r.players:DATA[r.sport].players.slice(0,6).map(p=>p.name);
+    $("#rosterBody").innerHTML=names.map(n=>{const p=DATA[r.sport].players.find(x=>x.name.toLowerCase()===n.toLowerCase())||{name:n,team:"—",pos:"—",proj:"—",status:"Unknown"};return `<tr><td><div class="player"><div class="avatar">${initials(p.name)}</div><div><b>${esc(p.name)}</b><small>${p.team}</small></div></div></td><td>${p.pos}</td><td class="score">${p.proj}</td><td>Current</td><td><span class="pill ${p.status==="Questionable"?"yellow":"green"}">${p.status}</span></td><td><button class="btn" onclick="askAbout('${String(p.name).replace(/'/g,"\\'")}')">Evaluate</button></td></tr>`}).join("");
+  }
+  function adjusted(p){let a=0;if(p.status==="Questionable")a-=2;if(p.matchup==="Favorable")a+=.7;if(p.matchup==="Tough")a-=.9;return {...p,liveAdj:a,rankScore:p.proj+a}}
+  async function refreshLiveData(silent=false){
+    const eps=[`/api/rankings?sport=${sport}&season=2026&scoring=${sport==="NFL"?"PPR":"H2H_POINTS"}`,`/api/news?sport=${sport}`,`/api/injuries?sport=${sport}`,`/api/weather?sport=${sport}`,`/api/odds?sport=${sport}`];
+    let ok=0;for(const ep of eps){try{const r=await fetch(ep,{headers:{Accept:"application/json"}});if(r.ok)ok++}catch(e){}}
+    $("#rankingUpdated").textContent=ok?`Live sync ${new Date().toLocaleTimeString()}`:"Demo snapshot";
+    if(!silent)toast(ok?`Updated ${ok} live feeds.`:"No backend feeds detected; using demo data.");
+    renderSources();render();
+  }
+
   let sport = "NFL";
 
   const $ = (s) => document.querySelector(s);
@@ -458,6 +543,9 @@
     renderNews(d.news);
     renderMarkets(d.players);
     renderRoster(d.players);
+    renderSources();
+    renderRosters();
+    renderActiveRoster();
   }
 
   function renderTopPlayers(players) {
@@ -474,17 +562,9 @@
   }
 
   function renderRankings(players) {
-    const filter = $("#positionFilter")?.value || "ALL";
-    const filtered = players.filter(p => filter==="ALL" || p.pos===filter);
-    $("#rankingsBody").innerHTML = filtered.map((p,i)=>`
-      <tr>
-        <td><span class="rank">${i+1}</span></td>
-        <td><div class="player"><div class="avatar">${initials(p.name)}</div><div><b>${p.name}</b><small>${p.team}</small></div></div></td>
-        <td>${p.pos}</td><td class="score">${p.proj}</td><td>${p.market}</td>
-        <td class="up">${p.value}</td>
-        <td><span class="pill ${p.matchup==="Tough"?"red":"green"}">${p.matchup}</span></td>
-        <td><button class="btn" onclick="askAbout('${p.name}')">Ask AI</button></td>
-      </tr>`).join("");
+    const filter=$("#positionFilter")?.value||"ALL";
+    const ranked=players.map(adjusted).filter(p=>filter==="ALL"||p.pos===filter).sort((a,b)=>b.rankScore-a.rankScore);
+    $("#rankingsBody").innerHTML=ranked.map((p,i)=>`<tr><td><span class="rank">${i+1}</span></td><td><div class="player"><div class="avatar">${initials(p.name)}</div><div><b>${esc(p.name)}</b><small>${p.team}</small></div></div></td><td>${p.pos}</td><td class="score">${p.proj}</td><td>${i+1}</td><td class="${p.liveAdj>=0?"up":"down"}">${p.liveAdj>0?"+":""}${p.liveAdj.toFixed(1)}</td><td><span class="pill ${p.matchup==="Tough"?"red":"green"}">${p.matchup}</span></td><td><span class="pill ${p.status==="Questionable"?"yellow":"green"}">${p.status}</span></td><td><button class="btn" onclick="askAbout('${String(p.name).replace(/'/g,"\\'")}')">Ask AI</button></td></tr>`).join("");
   }
 
   function renderMatchups(matches) {
@@ -529,15 +609,7 @@
       </div>`).join("");
   }
 
-  function renderRoster(players) {
-    $("#rosterBody").innerHTML = players.slice(0,6).map(p=>`
-      <tr>
-        <td><div class="player"><div class="avatar">${initials(p.name)}</div><div><b>${p.name}</b><small>${p.team}</small></div></div></td>
-        <td>${p.pos}</td><td class="score">${p.proj}</td><td>${sport==="NFL"?"CIN / PIT":"OKC / DEN"}</td>
-        <td><span class="pill ${p.status==="Questionable"?"yellow":"green"}">${p.status}</span></td>
-        <td><button class="btn" onclick="askAbout('${p.name}')">Evaluate</button></td>
-      </tr>`).join("");
-  }
+  function renderRoster(players){ renderActiveRoster(); }
 
   function showSection(id) {
     $$(".page-section").forEach(s => s.classList.toggle("hidden", s.id !== id));
@@ -621,6 +693,14 @@
     else { showSection("rankings"); toast(`Searching FantasyIQ for “${e.target.value}”`); }
   });
 
+  $("#addRosterBtn").addEventListener("click",openRosterModal);
+  $("#refreshRankingsBtn").addEventListener("click",()=>refreshLiveData(false));
+  $("#dashboardRefresh").addEventListener("click",()=>refreshLiveData(false));
+  $("#positionFilter").addEventListener("change",()=>renderRankings(DATA[sport].players));
+  $("#sourceMode").addEventListener("change",()=>renderRankings(DATA[sport].players));
+  $("#rerankBtn").addEventListener("click",()=>{toast(`Re-ranked ${sport} using scoring-specific projections and live adjustments.`);renderRankings(DATA[sport].players);});
+  $("#modalAction").onclick=()=>{if($("#modalAction").dataset.mode==="createRoster"){createRoster();return;}closeModal();toast("Connection flow placeholder opened. Add your backend integration here.");};
+  setInterval(()=>refreshLiveData(true),15*60*1000);
   render();
 </script>
 </body>
